@@ -1,70 +1,63 @@
 #include <iostream>
 #include <conio.h>
 #include <limits>
-#include <chrono>
-#include <thread>
-#include <atomic>
 
-#define STRING std::string
-#define TEN_SECONDS 10
+#include "quiz_helper.h" // include the quiz helper in the main.cpp file
 
-const bool TIMED_QUESTION = true;
+#define STRING std::string // used to make readability of this file easier
+#define TEN_SECONDS 10 // used to make readability of this file easier
 
-std::atomic<bool> inputReceived(false);
+const bool TIMED_QUESTION = true; // used to make readability of this file easier
+const int TOTAL_QUIZ_QUESTIONS = 5;
 
-using std::cout;
-using std::cin;
+using std::cout; // shortens std::cout -> cout
+using std::cin; // shortens std::cin -> cin
 
+// Create a class named Questions so that we can create new questions easily.
 class Question
 {
 	public:
+		// Instantiating the necessary variables
 		STRING question_text;
 		STRING options[4];
 		char correctAnswer;
 		bool timedQuestion;
 		int timer;
-	Question(STRING text, STRING options[4], char correctAnswer, bool timedQuestion, int timer = 0)
-	{
-		question_text = text;
-        
-		for(int i = 0; i < 4; i++)
-        {
-        	this->options[i] = options[i];
-        };
-        
-		this->correctAnswer = correctAnswer;
-		this->timedQuestion = timedQuestion;
-		this->timer = timer;
-	}
+		
+		// When this class is trying to be instantiated, we will force ourselves to supply it with values.
+		Question(STRING text, STRING options[4], char correctAnswer, bool timedQuestion, int timer = 0)
+		{
+			question_text = text;
+			
+			for(int i = 0; i < 4; i++)
+			{
+				this->options[i] = options[i];
+			};
+			
+			this->correctAnswer = correctAnswer;
+			this->timedQuestion = timedQuestion;
+			this->timer = timer;
+		}
 };
-
-char userInput = '\0';
-
-void getInput()
-{
-    cin >> userInput;
-    inputReceived = true;
-}
-
-bool timedInput(char& input, int timeoutSeconds);
-void scoreChange(unsigned int* score, bool succeed);
 
 int main()
 {
+	// Instantiating the necessary variables:
 	bool running = true;
 	unsigned int score = 0;
 	int number_input = 0;
 	char playerOption;
 	unsigned int *total_questions;
 	
-    // Question Options
+    // Create all the options for the questions
     STRING question1_options[] = {"var x = 10;", "int x = \"10\";", "x := 10", "declare x = 10"};
     STRING question2_options[] = {"string", "object", "int", "class"};
     STRING question3_options[] = {"The variable cannot change", "The method or variable belongs to the class itself", "The method is private", "The method cannot return a value"};
     STRING question4_options[] = {"for", "switch", "if", "Both a and b"};
     STRING question5_options[] = {"func", "define", "method", "void"};
 	
-	Question questions[5] = 
+	// Create an array of questions
+	Question questions[TOTAL_QUIZ_QUESTIONS] = 
 	{
 		Question("What is the correct way to declare a variable in C#?: ", question1_options, 'a', !TIMED_QUESTION), // Question 1
 		Question("Which of the following is a value type in C#?: ", question2_options, 'c', !TIMED_QUESTION), // Question 2
@@ -73,19 +66,22 @@ int main()
 		Question("Which keyword is used to define a method in C#?: ", question5_options, 'd', TIMED_QUESTION, TEN_SECONDS) // Question 5
 	};
 	
+	// STARTING MAIN GAME LOOP -----------
 	do{
+		// Through dynamic memory allocation, ask the user how much questions they want to use.
 		do{
-			cout << "How much questions do you want (1-5)?" << '\n';
-			cin >> number_input;
+			cout << "How much questions do you want (1-5)?" << '\n'; // display how much questions the user wants to answer
+			cin >> number_input; // store the users input into number_input
 			
 			std::cin.clear(); // clear any error flags at cin.
 			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-		}while(number_input < 1 || number_input > 5);
-		total_questions = new unsigned int(number_input);
+		}while(number_input < 1 || number_input > TOTAL_QUIZ_QUESTIONS); // continue this loop until number_input is a value between "1-5".
+		total_questions = new unsigned int(number_input); // store the correct input of the user 
 		
-		// display each question
+		// Display each question
 		for(unsigned int i = 0; i < *total_questions; i++)
 		{
+			// Display each option
 			cout << questions[i].question_text << '\n';
 			for(int j = 0; j < 4; j++)
 			{
@@ -95,6 +91,7 @@ int main()
 			// CHECK IF QUESTION IS TIMED, then ask for user input
 			if(questions[i].timedQuestion == true)
 			{
+				// IF QUESTION IS TIMED:
 				cin.clear();
 				cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 				
@@ -110,66 +107,30 @@ int main()
 			}
 			else
 			{
+				// IF QUESTION IS UN-TIMED:
 				cout << "Type the corresponding letter: ";
 				cin >> playerOption;
 			}
 			
+			// If the user's input matches the correct answer, add 1 to the score; otherwise it is false.
 			playerOption == questions[i].correctAnswer ? scoreChange(&score, true) : scoreChange(&score, false);
 			
 			cout << "\n--------\n";
 		}
 		
-		running = false;
+		// Once all the questions have been sorted through, display the final score; then do the following cleanup code.
+		cout << "Final score: " << score << "/" << *total_questions << '\n';
+		delete total_questions;  // cleans up the memory taken by the total_questions
+		score = 0; // set score back to 0
 		
-		cout << "Final score: " << score << "/" << *total_questions;
-		delete total_questions; 
-		
+		// Ask the player if they want to retry
+		if(!retry())
+		{
+			running = false;
+		}
 	}while(running);
+	// END OF MAIN GAME LOOP -----------
 	
 	getch();
 	return 0;
 }
-
-void scoreChange(unsigned int* score, bool succeed)
-{
-	if(succeed)
-	{
-		*score = *score + 1;
-		cout << "You've answered correctly!";
-	}
-	else
-	{
-		cout << "You've answered incorrectly!";
-	}
-}
-
-bool timedInput(char& input, int timeoutSeconds)
-{
-	using namespace std::chrono;
-
-    cout.flush();
-    auto start = steady_clock::now();
-
-    while (true)
-    {
-        if (cin.peek() != EOF)
-        {
-            cin >> input;
-
-            // Clear the rest of the line to avoid leftover input
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-            return true;
-        }
-
-        auto now = steady_clock::now();
-        auto elapsed = duration_cast<seconds>(now - start).count();
-
-        if (elapsed >= timeoutSeconds)
-        {
-            return false;
-        }
-
-        std::this_thread::sleep_for(milliseconds(100)); // Avoid busy wait
-    }
-};
